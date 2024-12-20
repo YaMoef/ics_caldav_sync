@@ -1,0 +1,41 @@
+name: Build and publish ics_caldav_sync
+
+on:
+  push:
+    tags:
+      - "v**"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Parse semantic version from tag
+        shell: bash
+        run: |
+          pattern="(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"
+          version=$(echo "${{ github.ref_name }}" | grep -oP "$pattern")
+          echo "version=$version" >> $GITHUB_OUTPUT          
+        id: extract_version
+
+      - name: Show extracted version
+        shell: bash
+        run: echo "${{ steps.extract_version.outputs.version }}"
+
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: "${{ vars.DOCKER_DEFAULT_REGISTRY_URI }}"
+          username: "${{ secrets.DOCKER_DEFAULT_REGISTRY_USERNAME }}"
+          password: "${{ secrets.DOCKER_DEFAULT_REGISTRY_PASSWORD }}"
+
+      - name: Build and push ics_caldav_sync Docker image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: "${{ vars.DOCKER_DEFAULT_REGISTRY_URI }}/ics_caldav_sync/ics_caldav_sync:${{ steps.extract_version.outputs.version }}"
