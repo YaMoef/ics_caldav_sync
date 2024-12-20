@@ -149,6 +149,9 @@ class ICSToCalDAV:
                 self.local_calendar.save_event(self._wrap(remote_event))
             except vobject.base.ValidateError:
                 logger.exception("Invalid event was downloaded from the remote. It will be skipped.")
+            except ValueError:
+                logger.exception("Invalid event was downloaded from the remote. It will be skipped.")
+
             print("+", end="")
             sys.stdout.flush()
         print()
@@ -173,7 +176,9 @@ def getenv_or_raise(var):
 
 
 def main():
-    if os.getenv("DEBUG"):
+    logging.basicConfig(level=logging.INFO)
+
+    if os.getenv("DEBUG") == True:
         logging.basicConfig(level=logging.DEBUG)
 
     settings = {
@@ -205,7 +210,9 @@ def main():
         else:
             next_run = arrow.utcnow().dehumanize(sync_every)
 
+        logger.info("starting sync")
         ICSToCalDAV(**settings).synchronise()
+        logger.info("sync done successfully")
 
         if next_run is None:
             break
